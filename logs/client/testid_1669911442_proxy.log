@@ -1,0 +1,4 @@
+/home/browser/./ptproxy/ptproxy.py:89: DeprecationWarning: "@coroutine" decorator is deprecated since Python 3.8, use "async def" instead
+  def proxy_data(reader, writer):
+/home/browser/./ptproxy/ptproxy.py:102: DeprecationWarning: "@coroutine" decorator is deprecated since Python 3.8, use "async def" instead
+  def proxied_connection(dst, proxy_type=None, addr=None, port=None, rdns=True, username=None, password=None):

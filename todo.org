@@ -1,0 +1,29 @@
+* ABANDONED Parameterize Obfs bridge details
+We want to run private bridges to avoid non-protocol-based blocking
+* TODO Parameterize Snowflake proxy and broker
+This will be trickier: likely need to modify Snowflake codebase to
+alter behavior. We want to control both the broker and the proxy
+rather than using public infrastructure.
+* ABANDONED Add Obfs bridge run script
+Hitting errors getting directory information in AWS, seems better to
+just run PTs as a SOCKS proxy
+** TODO Needs testing on unique hosts
+** DONE Needs dynamic piece to pull bridge fingerprint after bridge has started and serve it back in some automated fashion 
+No, we just need (a few) set of keys we build into the bridge image
+and client. We can probably only run one bridge with a key at a time?
+Still need cert line for obfsproxy :(
+* DONE Add ShadowSocks proxy run script
+* TODO Improve ptproxy
+ptproxy issues some errors - they _seem_ benign but might not be.
+** TODO Handle Resolution Errors
+Name resolution errors result in a client hang, we should instead
+issue a log message and fail the client faster
+* TODO Improve run_ss/selenium usage
+using obfs4+ptproxy in particular we get Exceptions from selenium that
+aren't being handled.
+** DONE Catch Exceptions
+We need to catch more exceptions. Need try/catch around
+driver.get(BLANK_URL)
+** TODO Handle HTTP vs. HTTPS
+Need to properly handle when pages give errors because they want
+HTTPS - possibly just groom the alexa data to only do HTTPS pages?

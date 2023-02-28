@@ -1,0 +1,98 @@
+# Repo Goal:
+Run "measurement" experiments between two cloud hosts, one running a
+dockerized "client" and one running a dockerized "server." We want to
+run a variety of circumvention protocols and see if they get blocked
+in some way. Since our "server" will be on a new IP and only being
+used by us, the connection should only get blocked if there is
+protocol-classification-based censorship going on. We will use web
+browsing to recreate "typical" censorship circumvention application
+traffic being pushed through the circumention protocol
+tunnels (in case the protocol classification is sensitive to the
+application using the circumvention protocol).
+
+# Structure
+The repo is mainly broken into server and client subdirectories, each
+with Dockerfiles and local dependencies for building the docker image
+to run as the client and server. At the top level of each subdir is a
+"run.sh" script that wraps creating the docker container with the
+right args for doing a measuremnet.
+
+## ptproxy
+Inside <client|server>/docker/ there is a ptproxy dir: this is a clone
+of a github repo that has been manually fixed up for our version of
+python. It provides a SOCKS5 proxy interface for a Pluggable Transport
+proxy. I believe this repo is where at least _some_ of the fixes are
+going to need to occur. It is just cloned into each directory
+separately so you can either figure out a proper symbolic linking
+refactor or just keep copying changes from one to the other.
+
+## scripts
+In server/docker/scripts there is a separate script for each type of proxy
+we support. run-ss.sh and run-pt.sh should work, ignore run-tor.sh for
+now.
+
+In client/docker/scripts there is run_ss.py which is actually used for
+running all protocols. It takes a bunch of arguments, many dependent
+on which protocol you are using. The client/run.sh should provide an
+idea of these.
+
+### Hardcoded obfs4proxy args
+An important note is that, inside run_ss.py, there is some hardcoding
+of some args for obfs4proxy (the pt/pluggable transport we are using)
+configuration.
+run_ss.py::319 has these. In particular the "ptargs" field of the json
+has a hardcoded cert value that needs to correspond to the server
+image's obfs4proxy cert. This _should_ be fine because the cert value
+be determined by obfs4_state.json file that is _mounted_ into the
+server (from server/docker/content/obfs4_state.json) and so shoudl
+remain stable across builds/runs/etc.
+
+# The Problem(s)
+Running the pt (aka obfs4proxy) mode of measurement seems a bit
+unstable:
+1. There are (seemingly spurious?) errors issues by ptproxy during
+operation that we should ensure are not real errors and, ideally,
+figure out the proper way to remove.
+
+2. Navigation failures result in very long waits: e.g. if the client
+tries to navigate to a nonexistent website it appears we are waiting
+on a long timeout (neighborhood of 30s or more) before the client
+gives up and moves on. This also seems to sometimes cause stability
+problems in the underlying proxy connection. Instead, we want the
+shadowsocks behavior: the proxy server detects a name resolution
+error, forwards that back to the client, and the client immediately
+fails navigation and moves on to the next site.
+
+3. Less important, but we have an issue where we don't know whether we
+need/should try HTTP or HTTPS for a given domain. A couple possible
+solutions: we could make a script to pre-crawl our Alexa top10k sites
+and check which ones work with HTTPS or don't and then specify that in
+our csv file. There's _probably_ another way? But whatever gets rid of
+spurious errors from trying to navigate to HTTP/HTTPS when only the
+other one is supported would be great.
+
+# How To Run Locally:
+Something like this _ought_ to work:
+
+## Build:
+$ cd ./server/docker; docker build . -t mice-server-baseline:latest
+$ cd ./client/docker; docker build . -t mice-client-baseline:latest
+
+## Run SS (need two shells) :
+$ ./server/run.sh ss 1099 password1234
+$ docker inspect mice-server  | grep 172  # get the IP address of the server
+$ ./client/run.sh /path/to/somewhere/to/store/logs/on/host ss 5 testid
+dummy $SERVER_IP 1099 password1234
+
+
+## Run SS (need two shells) :
+$ ./server/run.sh ss //path/to/store/logs/at/ 1099 password1234
+$ docker inspect mice-server  | grep 172  # get the IP address of the server
+$ ./client/run.sh ss /path/to/somewhere/to/store/logs/on/host 5 testid nobridges $SERVER_IP 1099 password1234
+
+
+## Run PT (need two shells) :
+$ ./server/run.sh pt /path/to/store/logs/at/ 1099 
+$ docker inspect mice-server | grep IPAddress  # get the IP address of the server
+$ ./client/run.sh pt /path/to/store/logs/at/ 5 testid nobridges $SERVER_IP 1099 nopassword
+
